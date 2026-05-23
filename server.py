@@ -2,24 +2,21 @@ from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
-@app.route("/")
-def home():
-    return jsonify({"status": "online"})
+logs = []
 
 @app.route("/message", methods=["POST"])
 def message():
     data = request.get_json()
 
-    user = data.get("user")
-    msg = data.get("message")
+    entry = {
+        "user": data.get("user"),
+        "message": data.get("message")
+    }
 
-    print(f"[RECU] {user}: {msg}")
+    logs.append(entry)
 
-    response = f"Salut {user}, j'ai reçu: {msg}"
+    return jsonify({"status": "ok"})
 
-    return jsonify({
-        "response": response
-    })
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+@app.route("/logs", methods=["GET"])
+def get_logs():
+    return jsonify(logs)
