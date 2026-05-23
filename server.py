@@ -1,46 +1,51 @@
 from flask import Flask, request, jsonify
 import time
-import threading
 
 app = Flask(__name__)
 
-clients = {}
+clients = {}        # client_id -> last_seen
+messages = {}       # client_id -> list messages
 
-TIMEOUT = 10  # secondes sans ping = déconnecté
-
-# 🧹 nettoyage automatique
-def cleaner():
-    while True:
-        now = time.time()
-        to_remove = []
-
-        for cid, data in clients.items():
-            if now - data["last_seen"] > TIMEOUT:
-                to_remove.append(cid)
-
-        for cid in to_remove:
-            del clients[cid]
-
-        time.sleep(5)
-
-@app.route("/")
-def home():
-    return "OK"
-
-# 🔌 ping client
+# 🔌 ping client (pour apparaître dans la liste)
 @app.route("/ping", methods=["POST"])
 def ping():
-    data = request.json
-    cid = data["client_id"]
+    cid = request.json["client_id"]
 
-    clients[cid] = {
-        "last_seen": time.time()
-    }
+    clients[cid] = time.time()
 
-    return jsonify({"status": "ok"})
+    if cid not in messages:
+        messages[cid] = []
 
+    return {"ok": True}
+
+# 👥 liste clients
 @app.route("/clients")
 def get_clients():
     return jsonify(list(clients.keys()))
 
-threading.Thread(target=cleaner, daemon=True).start()
+# ✉️ envoyer message à un client
+@app.route("/send", methods=["POST"])
+def send():
+    data = request.json
+    cid = data["client_id"]
+    msg = data["message"]
+
+    if cid not in messages:
+        messages[cid] = []
+
+    messages[cid].append({
+        "msg": msg,
+        "time": time.strftime("%H:%M:%S")
+    })
+
+    return {"ok": True}
+
+# 📥 client récupère ses messages
+@app.route("/receive", methods=["POST"])
+def receive():
+    cid = request.json["client_id"]
+
+    msgs = messages.get(cid, [])
+    messages[cid] = []  # vider après lecture
+
+    return jsonify(msgs)
