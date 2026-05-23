@@ -1,44 +1,42 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from datetime import datetime
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder="static")
 
 clients = {}
-logs = []
+messages = {}
 
 @app.route("/")
 def home():
-    return jsonify({"status": "online"})
+    return send_from_directory("static", "index.html")
 
 @app.route("/send", methods=["POST"])
 def send():
     data = request.get_json()
 
-    hostname = data.get("hostname", "unknown")
+    hostname = data.get("hostname")
 
     clients[hostname] = {
-        "user": data.get("user", "unknown"),
+        "user": data.get("user"),
         "hostname": hostname,
-        "os": data.get("os", "unknown"),
+        "os": data.get("os"),
         "last_seen": datetime.utcnow().isoformat()
     }
 
-    logs.append({
+    messages.setdefault(hostname, []).append({
         "time": datetime.utcnow().isoformat(),
-        "user": data.get("user", "unknown"),
-        "hostname": hostname,
-        "message": data.get("message", "")
+        "message": data.get("message")
     })
 
-    return jsonify({"status": "ok"})
+    return jsonify({"ok": True})
 
 @app.route("/clients")
 def get_clients():
     return jsonify(list(clients.values()))
 
-@app.route("/logs")
-def get_logs():
-    return jsonify(logs)
+@app.route("/messages/<client>")
+def get_messages(client):
+    return jsonify(messages.get(client, []))
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+    app.run(host="0.0.0.0", port=5000, debug=True)
