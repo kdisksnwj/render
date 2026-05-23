@@ -4,11 +4,11 @@ import time
 app = Flask(__name__)
 
 clients = {}     # client_id -> last_seen
-messages = {}    # client_id -> list
+messages = {}    # client_id -> messages
 
 TIMEOUT = 8
 
-# 🔌 heartbeat
+# 🔌 client ping (seul rôle du client)
 @app.route("/ping", methods=["POST"])
 def ping():
     cid = request.json["client_id"]
@@ -19,19 +19,19 @@ def ping():
 
     return {"ok": True}
 
-# 👥 clients + statut
+# 👥 liste clients + statut
 @app.route("/clients")
 def get_clients():
     now = time.time()
-
     result = []
+
     for cid, last in clients.items():
         status = "connected" if now - last < TIMEOUT else "not connected"
         result.append({"id": cid, "status": status})
 
     return jsonify(result)
 
-# ✉️ envoyer message
+# ✉️ ADMIN envoie message au client
 @app.route("/send", methods=["POST"])
 def send():
     cid = request.json["client_id"]
@@ -47,7 +47,7 @@ def send():
 
     return {"ok": True}
 
-# 📥 recevoir messages
+# 📥 client récupère ses messages
 @app.route("/receive", methods=["POST"])
 def receive():
     cid = request.json["client_id"]
