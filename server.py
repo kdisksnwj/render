@@ -8,7 +8,11 @@ messages = {}
 
 @app.route("/")
 def home():
-    return send_from_directory("static", "index.html")
+    return """
+    <h1 style='color:lime;background:black;font-family:monospace'>
+    SERVER ONLINE
+    </h1>
+    """
 
 @app.route("/send", methods=["POST"])
 def send():
