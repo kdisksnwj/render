@@ -3,32 +3,37 @@ import time
 
 app = Flask(__name__)
 
-clients = set()
-logs = []
+clients = {}
 
 @app.route("/")
 def home():
     return "OK"
 
+# 🔌 connexion client
+@app.route("/connect", methods=["POST"])
+def connect():
+    data = request.json
+    client_id = data.get("client_id")
+
+    clients[client_id] = {
+        "last_seen": time.time()
+    }
+
+    return jsonify({"status": "connected"})
+
+# 💬 message
 @app.route("/message", methods=["POST"])
 def message():
     data = request.json
-    client_id = data.get("client_id", "unknown")
+    client_id = data.get("client_id")
+    msg = data.get("message")
 
-    clients.add(client_id)
-
-    logs.append({
-        "client": client_id,
-        "message": data.get("message"),
-        "time": time.strftime("%H:%M:%S")
+    return jsonify({
+        "from": client_id,
+        "message": msg
     })
 
-    return jsonify({"ok": True})
-
+# 👥 liste clients connectés
 @app.route("/clients")
 def get_clients():
-    return jsonify(list(clients))
-
-@app.route("/logs")
-def get_logs():
-    return jsonify(logs[-50:])
+    return jsonify(list(clients.keys()))
