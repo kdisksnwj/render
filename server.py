@@ -3,9 +3,8 @@ import time
 
 app = Flask(__name__)
 
+clients = set()
 logs = []
-clients = []
-client_counter = 0
 
 @app.route("/")
 def home():
@@ -13,14 +12,10 @@ def home():
 
 @app.route("/message", methods=["POST"])
 def message():
-    global client_counter
-
     data = request.json
-    client_id = data.get("client_id")
+    client_id = data.get("client_id", "unknown")
 
-    # nouveau client
-    if client_id not in clients:
-        clients.append(client_id)
+    clients.add(client_id)
 
     logs.append({
         "client": client_id,
@@ -28,12 +23,12 @@ def message():
         "time": time.strftime("%H:%M:%S")
     })
 
-    return jsonify({"reponse": data.get("message", "")})
+    return jsonify({"ok": True})
+
+@app.route("/clients")
+def get_clients():
+    return jsonify(list(clients))
 
 @app.route("/logs")
 def get_logs():
     return jsonify(logs[-50:])
-
-@app.route("/clients")
-def get_clients():
-    return jsonify(clients)
