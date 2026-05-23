@@ -3,27 +3,23 @@ import time
 
 app = Flask(__name__)
 
-connections = []
+logs = []
 
 @app.route("/")
 def home():
-    return "Serveur en ligne"
+    return "OK"
 
 @app.route("/message", methods=["POST"])
 def message():
     data = request.json
 
-    entry = {
+    logs.append({
         "message": data.get("message"),
         "time": time.strftime("%H:%M:%S")
-    }
+    })
 
-    connections.append(entry)
-
-    print("CONNEXION :", entry)
-
-    return jsonify({"reponse": data.get("message")})
+    return jsonify({"status": "ok"})
 
 @app.route("/logs")
-def logs():
-    return jsonify(connections)
+def get_logs():
+    return jsonify(logs[-50:])  # derniers logs
