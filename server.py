@@ -4,14 +4,21 @@ app = Flask(__name__)
 
 @app.route("/")
 def home():
-    return "Serveur OK"
+    return jsonify({"status": "online"})
 
-@app.route("/data", methods=["POST"])
-def data():
-    content = request.json
+@app.route("/message", methods=["POST"])
+def message():
+    data = request.get_json()
+
+    user = data.get("user")
+    msg = data.get("message")
+
+    print(f"[RECU] {user}: {msg}")
+
+    response = f"Salut {user}, j'ai reçu: {msg}"
+
     return jsonify({
-        "message": "Reçu",
-        "data": content
+        "response": response
     })
 
 if __name__ == "__main__":
