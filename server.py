@@ -1,91 +1,38 @@
 from flask import Flask, request, jsonify
-from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-clients = {}
-messages = {}
-blocked = set()
+latest_command = None
+last_response = None
 
-
-# ---------------- HOME ----------------
 @app.route("/")
 def home():
-    return "SERVER ONLINE"
+    return "Server online"
 
-
-# ---------------- SEND ----------------
+# envoyer une commande depuis GUI
 @app.route("/send", methods=["POST"])
 def send():
-    data = request.get_json() or {}
+    global latest_command
+    data = request.json
+    latest_command = data.get("cmd")
+    return jsonify({"status": "ok"})
 
-    hostname = data.get("hostname", "unknown")
-    message = data.get("message", "")
+# client récupère commande
+@app.route("/get", methods=["GET"])
+def get():
+    return jsonify({"cmd": latest_command})
 
-    # blocked client
-    if hostname in blocked:
-        return jsonify({"blocked": True})
+# client envoie réponse
+@app.route("/response", methods=["POST"])
+def response():
+    global last_response
+    last_response = request.json.get("result")
+    return jsonify({"status": "saved"})
 
-    # update client
-    clients[hostname] = {
-        "user": data.get("user", "unknown"),
-        "hostname": hostname,
-        "os": data.get("os", "unknown"),
-        "last_seen": datetime.utcnow().isoformat()
-    }
-
-    # store only real messages
-    if message and message != "heartbeat":
-        messages.setdefault(hostname, []).append({
-            "time": datetime.utcnow().isoformat(),
-            "user": data.get("user", "unknown"),
-            "message": message
-        })
-
-    return jsonify({"ok": True})
-
-
-# ---------------- CLIENTS ----------------
-@app.route("/clients")
-def get_clients():
-    return jsonify(list(clients.values()))
-
-
-# ---------------- MESSAGES ----------------
-@app.route("/messages/<hostname>")
-def get_messages(hostname):
-    return jsonify(messages.get(hostname, []))
-
-
-# ---------------- STATUS ----------------
-@app.route("/status/<hostname>")
-def status(hostname):
-    if hostname in blocked:
-        return jsonify({"status": "down"})
-
-    client = clients.get(hostname)
-    if not client:
-        return jsonify({"status": "offline"})
-
-    last = datetime.fromisoformat(client["last_seen"])
-    if datetime.utcnow() - last > timedelta(seconds=30):
-        return jsonify({"status": "offline"})
-
-    return jsonify({"status": "up"})
-
-
-# ---------------- CONTROL ----------------
-@app.route("/disconnect/<hostname>")
-def disconnect(hostname):
-    blocked.add(hostname)
-    return jsonify({"status": "disconnected"})
-
-
-@app.route("/reconnect/<hostname>")
-def reconnect(hostname):
-    blocked.discard(hostname)
-    return jsonify({"status": "reconnected"})
-
+# GUI récupère réponse
+@app.route("/result", methods=["GET"])
+def result():
+    return jsonify({"result": last_response})
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=10000)
