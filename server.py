@@ -1,22 +1,32 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request
+from flask_socketio import SocketIO, emit
 
 app = Flask(__name__)
+socketio = SocketIO(app, cors_allowed_origins="*")
 
-logs = []
+clients = []
 
-@app.route("/message", methods=["POST"])
-def message():
-    data = request.get_json()
+@app.route("/")
+def home():
+    return "ONLINE"
 
-    entry = {
+@socketio.on("connect")
+def on_connect():
+    print("Client connected")
+
+@socketio.on("message")
+def handle_message(data):
+
+    msg = {
         "user": data.get("user"),
-        "message": data.get("message")
+        "message": data.get("message"),
+        "ip": request.remote_addr,
+        "hostname": data.get("hostname")
     }
 
-    logs.append(entry)
+    print(msg)
 
-    return jsonify({"status": "ok"})
+    emit("broadcast", msg, broadcast=True)
 
-@app.route("/logs", methods=["GET"])
-def get_logs():
-    return jsonify(logs)
+if __name__ == "__main__":
+    socketio.run(app, host="0.0.0.0", port=10000)
