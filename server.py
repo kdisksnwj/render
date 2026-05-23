@@ -3,14 +3,15 @@ import time
 
 app = Flask(__name__)
 
-clients = {}        # client_id -> last_seen
-messages = {}       # client_id -> list messages
+clients = {}     # client_id -> last_seen
+messages = {}    # client_id -> list
 
-# 🔌 ping client (pour apparaître dans la liste)
+TIMEOUT = 8
+
+# 🔌 heartbeat
 @app.route("/ping", methods=["POST"])
 def ping():
     cid = request.json["client_id"]
-
     clients[cid] = time.time()
 
     if cid not in messages:
@@ -18,17 +19,23 @@ def ping():
 
     return {"ok": True}
 
-# 👥 liste clients
+# 👥 clients + statut
 @app.route("/clients")
 def get_clients():
-    return jsonify(list(clients.keys()))
+    now = time.time()
 
-# ✉️ envoyer message à un client
+    result = []
+    for cid, last in clients.items():
+        status = "connected" if now - last < TIMEOUT else "not connected"
+        result.append({"id": cid, "status": status})
+
+    return jsonify(result)
+
+# ✉️ envoyer message
 @app.route("/send", methods=["POST"])
 def send():
-    data = request.json
-    cid = data["client_id"]
-    msg = data["message"]
+    cid = request.json["client_id"]
+    msg = request.json["message"]
 
     if cid not in messages:
         messages[cid] = []
@@ -40,12 +47,12 @@ def send():
 
     return {"ok": True}
 
-# 📥 client récupère ses messages
+# 📥 recevoir messages
 @app.route("/receive", methods=["POST"])
 def receive():
     cid = request.json["client_id"]
 
     msgs = messages.get(cid, [])
-    messages[cid] = []  # vider après lecture
+    messages[cid] = []
 
     return jsonify(msgs)
