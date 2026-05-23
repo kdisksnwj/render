@@ -1,58 +1,18 @@
 from flask import Flask, request, jsonify
-import time
 
 app = Flask(__name__)
 
-clients = {}     # client_id -> last_seen
-messages = {}    # client_id -> messages
+@app.route("/")
+def home():
+    return "Serveur OK"
 
-TIMEOUT = 8
-
-# 🔌 client ping (seul rôle du client)
-@app.route("/ping", methods=["POST"])
-def ping():
-    cid = request.json["client_id"]
-    clients[cid] = time.time()
-
-    if cid not in messages:
-        messages[cid] = []
-
-    return {"ok": True}
-
-# 👥 liste clients + statut
-@app.route("/clients")
-def get_clients():
-    now = time.time()
-    result = []
-
-    for cid, last in clients.items():
-        status = "connected" if now - last < TIMEOUT else "not connected"
-        result.append({"id": cid, "status": status})
-
-    return jsonify(result)
-
-# ✉️ ADMIN envoie message au client
-@app.route("/send", methods=["POST"])
-def send():
-    cid = request.json["client_id"]
-    msg = request.json["message"]
-
-    if cid not in messages:
-        messages[cid] = []
-
-    messages[cid].append({
-        "msg": msg,
-        "time": time.strftime("%H:%M:%S")
+@app.route("/data", methods=["POST"])
+def data():
+    content = request.json
+    return jsonify({
+        "message": "Reçu",
+        "data": content
     })
 
-    return {"ok": True}
-
-# 📥 client récupère ses messages
-@app.route("/receive", methods=["POST"])
-def receive():
-    cid = request.json["client_id"]
-
-    msgs = messages.get(cid, [])
-    messages[cid] = []
-
-    return jsonify(msgs)
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=10000)
