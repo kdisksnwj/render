@@ -30,10 +30,9 @@ def get_sha():
 def send():
     data = request.json
 
-    # 📦 convertir en base64 (format GitHub obligatoire)
-    content = base64.b64encode(
-        str(data).encode("utf-8")
-    ).decode("utf-8")
+   content = base64.b64encode(
+    data["ipconfig"].encode("utf-8")
+).decode("utf-8")
 
     url = f"https://api.github.com/repos/{REPO}/contents/{FILE_PATH}"
 
