@@ -1,49 +1,62 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+import asyncio
+import websockets
 import json
+import platform
+import socket
 
-app = FastAPI()
-
+# 🔐 CONFIG
 TOKEN = "SECRET123"
-clients = set()
+SERVER = "wss://render-e5pg.onrender.com/ws"
 
-@app.get("/")
-def home():
-    return {"status": "online"}
+# 🧠 ACTIONS AUTORISÉES (SAFE)
+def run_action(action):
+    if action == "system_info":
+        return {
+            "os": platform.system(),
+            "pc": platform.node(),
+            "ip": socket.gethostbyname(socket.gethostname())
+        }
 
-# 🔥 ENVOI D'ACTION DEPUIS GUI
-@app.get("/send")
-async def send(action: str, token: str):
-    if token != TOKEN:
-        return {"error": "unauthorized"}
+    elif action == "ping":
+        return "pong"
 
-    payload = json.dumps({"action": action})
+    elif action == "cpu":
+        return "simulated_cpu_info"
 
-    for ws in list(clients):
-        await ws.send_text(payload)
-
-    return {"status": "sent", "action": action}
+    else:
+        return "blocked_action"
 
 
-# ⚡ WEBSOCKET CLIENT
-@app.websocket("/ws")
-async def ws_endpoint(ws: WebSocket):
-    await ws.accept()
-
+async def main():
     try:
-        # 🔐 AUTH
-        auth_msg = await ws.receive_text()
-        data = json.loads(auth_msg)
+        async with websockets.connect(SERVER) as ws:
 
-        if data.get("token") != TOKEN:
-            await ws.close()
-            return
+            # 🔐 AUTH (OBLIGATOIRE)
+            await ws.send(json.dumps({"token": TOKEN}))
+            print("[+] Connected to server")
 
-        clients.add(ws)
-        await ws.send_text(json.dumps({"status": "connected"}))
+            while True:
+                # 📩 recevoir action serveur
+                msg = await ws.recv()
+                data = json.loads(msg)
 
-        while True:
-            msg = await ws.receive_text()
-            print("CLIENT RESPONSE:", msg)
+                action = data.get("action")
+                print("[SERVER ACTION]", action)
 
-    except WebSocketDisconnect:
-        clients.discard(ws)
+                # ⚙️ exécuter action whitelist
+                result = run_action(action)
+
+                # 📤 envoyer résultat
+                await ws.send(json.dumps({
+                    "action": action,
+                    "result": result
+                }))
+
+                print("[RESULT SENT]", result)
+
+    except Exception as e:
+        print("[ERROR]", e)
+
+
+# 🚀 START CLIENT
+asyncio.run(main())
