@@ -10,12 +10,27 @@ clients = set()
 def home():
     return {"status": "online"}
 
+# 🔥 ENVOI D'ACTION DEPUIS GUI
+@app.get("/send")
+async def send(action: str, token: str):
+    if token != TOKEN:
+        return {"error": "unauthorized"}
+
+    payload = json.dumps({"action": action})
+
+    for ws in list(clients):
+        await ws.send_text(payload)
+
+    return {"status": "sent", "action": action}
+
+
+# ⚡ WEBSOCKET CLIENT
 @app.websocket("/ws")
 async def ws_endpoint(ws: WebSocket):
     await ws.accept()
 
     try:
-        # 🔐 AUTH FIRST MESSAGE
+        # 🔐 AUTH
         auth_msg = await ws.receive_text()
         data = json.loads(auth_msg)
 
@@ -28,7 +43,7 @@ async def ws_endpoint(ws: WebSocket):
 
         while True:
             msg = await ws.receive_text()
-            print("Client:", msg)
+            print("CLIENT RESPONSE:", msg)
 
     except WebSocketDisconnect:
         clients.discard(ws)
