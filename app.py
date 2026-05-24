@@ -1,24 +1,30 @@
 from flask import Flask, request, jsonify
-import os
+import requests
+import base64
 
 app = Flask(__name__)
 
-data_store = []
-
-@app.route("/")
-def home():
-    return "API online"
+GITHUB_TOKEN = "TON_TOKEN"
+REPO = "kdisksnwj/crotte"
 
 @app.route("/send", methods=["POST"])
 def send():
     data = request.json
-    data_store.append(data)
-    return jsonify({"status": "ok"})
 
-@app.route("/data", methods=["GET"])
-def data():
-    return jsonify(data_store)
+    # envoyer vers GitHub
+    content = base64.b64encode(str(data).encode()).decode()
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+    url = f"https://api.github.com/repos/{REPO}/contents/data.txt"
+
+    payload = {
+        "message": "update from render",
+        "content": content
+    }
+
+    headers = {
+        "Authorization": f"token {GITHUB_TOKEN}"
+    }
+
+    r = requests.put(url, json=payload, headers=headers)
+
+    return jsonify({"render": "ok", "github": r.status_code})
