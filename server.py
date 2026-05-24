@@ -4,42 +4,31 @@ import json
 app = FastAPI()
 
 TOKEN = "SECRET123"
-
 clients = set()
+
+@app.get("/")
+def home():
+    return {"status": "online"}
 
 @app.websocket("/ws")
 async def ws_endpoint(ws: WebSocket):
     await ws.accept()
 
-    # AUTH
-    auth = await ws.receive_text()
-    data = json.loads(auth)
-
-    if data.get("token") != TOKEN:
-        await ws.close()
-        return
-
-    clients.add(ws)
-    print("Client connected")
-
     try:
+        # 🔐 AUTH FIRST MESSAGE
+        auth_msg = await ws.receive_text()
+        data = json.loads(auth_msg)
+
+        if data.get("token") != TOKEN:
+            await ws.close()
+            return
+
+        clients.add(ws)
+        await ws.send_text(json.dumps({"status": "connected"}))
+
         while True:
             msg = await ws.receive_text()
-            print("From client:", msg)
+            print("Client:", msg)
 
     except WebSocketDisconnect:
-        clients.remove(ws)
-        print("Client disconnected")
-
-
-@app.get("/send")
-async def send(action: str, token: str):
-    if token != TOKEN:
-        return {"error": "unauthorized"}
-
-    payload = json.dumps({"action": action})
-
-    for c in list(clients):
-        await c.send_text(payload)
-
-    return {"status": "sent"}
+        clients.discard(ws)
