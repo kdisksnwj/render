@@ -4,7 +4,7 @@ import base64
 
 app = Flask(__name__)
 
-GITHUB_TOKEN = "TON_TOKEN"
+GITHUB_TOKEN = "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"
 REPO = "kdisksnwj/crotte"
 
 @app.route("/send", methods=["POST"])
