@@ -8,7 +8,7 @@ TOKEN = "SECRET123"
 clients = set()
 
 @app.websocket("/ws")
-async def websocket_endpoint(ws: WebSocket):
+async def ws_endpoint(ws: WebSocket):
     await ws.accept()
 
     # AUTH
@@ -20,6 +20,7 @@ async def websocket_endpoint(ws: WebSocket):
         return
 
     clients.add(ws)
+    print("Client connected")
 
     try:
         while True:
@@ -28,6 +29,7 @@ async def websocket_endpoint(ws: WebSocket):
 
     except WebSocketDisconnect:
         clients.remove(ws)
+        print("Client disconnected")
 
 
 @app.get("/send")
@@ -37,7 +39,7 @@ async def send(action: str, token: str):
 
     payload = json.dumps({"action": action})
 
-    for c in clients:
+    for c in list(clients):
         await c.send_text(payload)
 
     return {"status": "sent"}
