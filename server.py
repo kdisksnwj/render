@@ -1,62 +1,18 @@
-import asyncio
-import websockets
-import json
-import platform
-import socket
+from flask import Flask, request, jsonify
 
-# 🔐 CONFIG
-TOKEN = "SECRET123"
-SERVER = "wss://render-e5pg.onrender.com/ws"
+app = Flask(__name__)
 
-# 🧠 ACTIONS AUTORISÉES (SAFE)
-def run_action(action):
-    if action == "system_info":
-        return {
-            "os": platform.system(),
-            "pc": platform.node(),
-            "ip": socket.gethostbyname(socket.gethostname())
-        }
+data_store = []
 
-    elif action == "ping":
-        return "pong"
+@app.route("/send", methods=["POST"])
+def send():
+    data = request.json
+    data_store.append(data)
+    return jsonify({"status": "ok", "received": data})
 
-    elif action == "cpu":
-        return "simulated_cpu_info"
+@app.route("/data", methods=["GET"])
+def get_data():
+    return jsonify(data_store)
 
-    else:
-        return "blocked_action"
-
-
-async def main():
-    try:
-        async with websockets.connect(SERVER) as ws:
-
-            # 🔐 AUTH (OBLIGATOIRE)
-            await ws.send(json.dumps({"token": TOKEN}))
-            print("[+] Connected to server")
-
-            while True:
-                # 📩 recevoir action serveur
-                msg = await ws.recv()
-                data = json.loads(msg)
-
-                action = data.get("action")
-                print("[SERVER ACTION]", action)
-
-                # ⚙️ exécuter action whitelist
-                result = run_action(action)
-
-                # 📤 envoyer résultat
-                await ws.send(json.dumps({
-                    "action": action,
-                    "result": result
-                }))
-
-                print("[RESULT SENT]", result)
-
-    except Exception as e:
-        print("[ERROR]", e)
-
-
-# 🚀 START CLIENT
-asyncio.run(main())
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=10000)
