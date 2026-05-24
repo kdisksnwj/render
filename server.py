@@ -1,38 +1,43 @@
-from flask import Flask, request, jsonify
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+import json
 
-app = Flask(__name__)
+app = FastAPI()
 
-latest_command = None
-last_response = None
+TOKEN = "SECRET123"
 
-@app.route("/")
-def home():
-    return "Server online"
+clients = set()
 
-# envoyer une commande depuis GUI
-@app.route("/send", methods=["POST"])
-def send():
-    global latest_command
-    data = request.json
-    latest_command = data.get("cmd")
-    return jsonify({"status": "ok"})
+@app.websocket("/ws")
+async def websocket_endpoint(ws: WebSocket):
+    await ws.accept()
 
-# client récupère commande
-@app.route("/get", methods=["GET"])
-def get():
-    return jsonify({"cmd": latest_command})
+    # AUTH
+    auth = await ws.receive_text()
+    data = json.loads(auth)
 
-# client envoie réponse
-@app.route("/response", methods=["POST"])
-def response():
-    global last_response
-    last_response = request.json.get("result")
-    return jsonify({"status": "saved"})
+    if data.get("token") != TOKEN:
+        await ws.close()
+        return
 
-# GUI récupère réponse
-@app.route("/result", methods=["GET"])
-def result():
-    return jsonify({"result": last_response})
+    clients.add(ws)
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+    try:
+        while True:
+            msg = await ws.receive_text()
+            print("From client:", msg)
+
+    except WebSocketDisconnect:
+        clients.remove(ws)
+
+
+@app.get("/send")
+async def send(action: str, token: str):
+    if token != TOKEN:
+        return {"error": "unauthorized"}
+
+    payload = json.dumps({"action": action})
+
+    for c in clients:
+        await c.send_text(payload)
+
+    return {"status": "sent"}
